@@ -9,29 +9,26 @@ var svg = d3.select('body')
   .attr('width', width)
   .attr('height', height);
 
+var drag = d3.behavior.drag()
+    .origin(function(d) { return d; })
+    .on("dragstart", dragstarted)
+    .on("drag", dragged)
+    .on("dragend", dragended);
+
 // set up initial nodes and links
 //  - nodes are known by 'id', not by index in array.
 //  - reflexive edges are indicated on the node (as a bold black circle).
 //  - links are always source < target; edge directions are set by 'left' and 'right'.
 var nodes = [
-    {id: 0, reflexive: false},
-    {id: 1, reflexive: true },
-    {id: 2, reflexive: false}
+    {id: 0, reflexive: false, x: 200, y: 200},
+    {id: 1, reflexive: true, x: 500, y: 300 },
+    {id: 2, reflexive: false, x: 250, y: 50}
   ],
   lastNodeId = 2,
   links = [
     {source: nodes[0], target: nodes[1], left: false, right: true },
     {source: nodes[1], target: nodes[2], left: false, right: true }
   ];
-
-// init D3 force layout
-var force = d3.layout.force()
-    .nodes(nodes)
-    .links(links)
-    .size([width, height])
-    .linkDistance(150)
-    .charge(-500)
-    .on('tick', tick)
 
 // define arrow markers for graph links
 svg.append('svg:defs').append('svg:marker')
@@ -131,7 +128,6 @@ function restart() {
 
   // remove old links
   path.exit().remove();
-
 
   // circle (node) group
   // NB: the function arg is crucial here! nodes are known by id, not by index!
@@ -235,8 +231,7 @@ function restart() {
   // remove old nodes
   circle.exit().remove();
 
-  // set the graph in motion
-  force.start();
+  tick();
 }
 
 function mousedown() {
@@ -302,7 +297,7 @@ function keydown() {
 
   // ctrl
   if(d3.event.keyCode === 17) {
-    circle.call(force.drag);
+    circle.call(drag);
     svg.classed('ctrl', true);
   }
 
@@ -360,6 +355,21 @@ function keyup() {
       .on('touchstart.drag', null);
     svg.classed('ctrl', false);
   }
+}
+
+function dragstarted(d) {
+  d3.event.sourceEvent.stopPropagation();
+  d3.select(this).classed("dragging", true);
+}
+
+function dragged(d) {
+  d.x = d3.event.x
+  d.y = d3.event.y
+  tick();
+}
+
+function dragended(d) {
+  d3.select(this).classed("dragging", false);
 }
 
 // app starts here
