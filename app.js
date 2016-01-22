@@ -3,17 +3,26 @@ var width  = 960,
     height = 500,
     colors = d3.scale.category10();
 
-var svg = d3.select('body')
-  .append('svg')
-  .attr('oncontextmenu', 'return false;')
-  .attr('width', width)
-  .attr('height', height);
 
 var drag = d3.behavior.drag()
     .origin(function(d) { return d; })
     .on("dragstart", dragstarted)
     .on("drag", dragged)
     .on("dragend", dragended);
+
+var zoom = d3.behavior.zoom()
+    .scaleExtent([1, 10])
+    .on("zoom", zoomed);
+
+var svg = d3.select('body')
+  .append('svg')
+  .attr('oncontextmenu', 'return false;')
+  .attr('width', width)
+  .attr('height', height)
+  .call(zoom);
+
+
+var container = svg.append("svg:g")
 
 // set up initial nodes and links
 //  - nodes are known by 'id', not by index in array.
@@ -53,14 +62,19 @@ svg.append('svg:defs').append('svg:marker')
     .attr('d', 'M10,-5L0,0L10,5')
     .attr('fill', '#000');
 
+svg.on("contextmenu", function (d, i) {
+            d3.event.preventDefault();
+           // react on right-clicking
+        });
+
 // line displayed when dragging new nodes
-var drag_line = svg.append('svg:path')
+var drag_line = container.append('svg:path')
   .attr('class', 'link dragline hidden')
   .attr('d', 'M0,0L0,0');
 
 // handles to link and node element groups
-var path = svg.append('svg:g').selectAll('path'),
-    circle = svg.append('svg:g').selectAll('g');
+var path = container.append('svg:g').selectAll('path'),
+    circle = container.append('svg:g').selectAll('g');
 
 var property_rows = d3.select('#nodeproperties').select('table').selectAll('tr.property');
 
@@ -272,13 +286,15 @@ function mousedown() {
   //d3.event.preventDefault();
 
   // because :active only works in WebKit?
-  svg.classed('active', true);
+  container.classed('active', true);
+  console.log('mousedown')
 
-  if(d3.event.ctrlKey || mousedown_node || mousedown_link) return;
+  if(d3.event.ctrlKey || mousedown_node || mousedown_link || d3.event.buttons == 2) return;
 
   // insert new node at point
-  var point = d3.mouse(this),
+  var point = d3.mouse(container.node()),
       node = {id: ++lastNodeId, reflexive: false};
+  console.log(point)
   node.x = point[0];
   node.y = point[1];
   nodes.push(node);
@@ -290,7 +306,7 @@ function mousemove() {
   if(!mousedown_node) return;
 
   // update drag line
-  drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(this)[0] + ',' + d3.mouse(this)[1]);
+  drag_line.attr('d', 'M' + mousedown_node.x + ',' + mousedown_node.y + 'L' + d3.mouse(container.node())[0] + ',' + d3.mouse(container.node())[1]);
 
   restart();
 }
@@ -390,19 +406,33 @@ function keyup() {
   }
 }
 
+function zoomed() {
+  console.log(d3.event)
+  if(d3.event.sourceEvent.buttons == 2 || d3.event.sourceEvent.type == 'wheel'){
+    container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+  }
+}
+
 function dragstarted(d) {
-  d3.event.sourceEvent.stopPropagation();
-  d3.select(this).classed("dragging", true);
+  if(d3.event.sourceEvent.buttons == 1){
+    d3.event.sourceEvent.stopPropagation();
+    d3.select(this).classed("dragging", true);
+  }
 }
 
 function dragged(d) {
-  d.x = d3.event.x
-  d.y = d3.event.y
-  tick();
+
+  if(d3.event.sourceEvent.buttons == 1){
+    d.x = d3.event.x
+    d.y = d3.event.y
+    tick();
+ }
 }
 
 function dragended(d) {
-  d3.select(this).classed("dragging", false);
+  if(d3.event.sourceEvent.buttons == 1){
+    d3.select(this).classed("dragging", false);
+  }
 }
 
 // app starts here
