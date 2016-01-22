@@ -1,3 +1,8 @@
+#container {
+  display:flex;
+  justify-content:left;
+}
+
 svg {
   background-color: #FFF;
   cursor: default;
@@ -58,4 +63,12 @@ text.id {
 
 div#nodeproperties {
   width: 200px;
+}
+
+li.over {
+  font-weight: bold;
+}
+
+li.loaded {
+  background-color: #AAA;
 }

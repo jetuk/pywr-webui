@@ -35,8 +35,8 @@ var nodes = [
   ],
   lastNodeId = 2,
   links = [
-    {source: nodes[0], target: nodes[1], left: false, right: true },
-    {source: nodes[1], target: nodes[2], left: false, right: true }
+    {source: 0, target: 1, left: false, right: true },
+    {source: 1, target: 2, left: false, right: true }
   ];
 
 // define arrow markers for graph links
@@ -81,6 +81,7 @@ var property_rows = d3.select('#nodeproperties').select('table').selectAll('tr.p
 // mouse event vars
 var selected_node = null,
     selected_link = null,
+    selected_graph = null,
     mousedown_link = null,
     mousedown_node = null,
     mouseup_node = null;
@@ -95,17 +96,19 @@ function resetMouseVars() {
 function tick() {
   // draw directed edges with proper padding from node centers
   path.attr('d', function(d) {
-    var deltaX = d.target.x - d.source.x,
-        deltaY = d.target.y - d.source.y,
+    target = nodes[d.target]
+    source = nodes[d.source]
+    var deltaX = target.x - source.x,
+        deltaY = target.y - source.y,
         dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
         normX = deltaX / dist,
         normY = deltaY / dist,
         sourcePadding = d.left ? 17 : 12,
         targetPadding = d.right ? 17 : 12,
-        sourceX = d.source.x + (sourcePadding * normX),
-        sourceY = d.source.y + (sourcePadding * normY),
-        targetX = d.target.x - (targetPadding * normX),
-        targetY = d.target.y - (targetPadding * normY);
+        sourceX = source.x + (sourcePadding * normX),
+        sourceY = source.y + (sourcePadding * normY),
+        targetX = target.x - (targetPadding * normX),
+        targetY = target.y - (targetPadding * normY);
     return 'M' + sourceX + ',' + sourceY + 'L' + targetX + ',' + targetY;
   });
 
@@ -257,7 +260,7 @@ function restart() {
       if(link) {
         link[direction] = true;
       } else {
-        link = {source: source, target: target, left: false, right: false};
+        link = {source: source.id, target: target.id, left: false, right: false};
         link[direction] = true;
         links.push(link);
       }
@@ -279,6 +282,7 @@ function restart() {
   circle.exit().remove();
 
   tick();
+  if (selected_graph) save_graph()
 }
 
 function mousedown() {
@@ -287,14 +291,12 @@ function mousedown() {
 
   // because :active only works in WebKit?
   container.classed('active', true);
-  console.log('mousedown')
 
   if(d3.event.ctrlKey || mousedown_node || mousedown_link || d3.event.buttons == 2) return;
 
   // insert new node at point
   var point = d3.mouse(container.node()),
       node = {id: ++lastNodeId, reflexive: false};
-  console.log(point)
   node.x = point[0];
   node.y = point[1];
   nodes.push(node);
@@ -407,7 +409,6 @@ function keyup() {
 }
 
 function zoomed() {
-  console.log(d3.event)
   if(d3.event.sourceEvent.buttons == 2 || d3.event.sourceEvent.type == 'wheel'){
     container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
   }
@@ -435,6 +436,52 @@ function dragended(d) {
   }
 }
 
+function refresh_graph_list() {
+    d3.json("/graphs", function(error, json) {
+      if (error) return console.warn(error);
+
+      li = d3.select('#graph_list').selectAll('li').data(json.graph_files)
+
+      li.enter().append('li')
+        .text(function(d) { return d;})
+        .on('mouseover', function(d) {
+          d3.select(this).classed("over", true);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).classed("over", false);
+        })
+        .on('click', function(d) {
+            load_graph(d)
+            d3.selectAll("li.loaded").classed("loaded", false)
+            d3.select(this).classed("loaded", true)
+
+        })
+
+      li.exit().remove()
+
+
+    });
+}
+
+function load_graph(graph_name) {
+    d3.json("/graphs/" + graph_name, function(error, json) {
+      if (error) return console.warn(error);
+
+      nodes = json.nodes
+      links = json.links
+      selected_graph = graph_name
+      restart()
+    })
+
+}
+
+function save_graph() {
+    if(selected_graph) {
+      d3.json("/graphs/" + selected_graph)
+        .post(JSON.stringify({nodes: nodes, links: links}))
+    }
+}
+
 // app starts here
 svg.on('mousedown', mousedown)
   .on('mousemove', mousemove)
@@ -442,4 +489,6 @@ svg.on('mousedown', mousedown)
 d3.select(window)
   .on('keydown', keydown)
   .on('keyup', keyup);
+
+refresh_graph_list()
 restart();
