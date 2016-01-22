@@ -20,9 +20,9 @@ var drag = d3.behavior.drag()
 //  - reflexive edges are indicated on the node (as a bold black circle).
 //  - links are always source < target; edge directions are set by 'left' and 'right'.
 var nodes = [
-    {id: 0, reflexive: false, x: 200, y: 200},
-    {id: 1, reflexive: true, x: 500, y: 300 },
-    {id: 2, reflexive: false, x: 250, y: 50}
+    {id: 0, reflexive: false, x: 200, y: 200, name: 'reservoir'},
+    {id: 1, reflexive: true, x: 500, y: 300, },
+    {id: 2, reflexive: false, x: 250, y: 50, }
   ],
   lastNodeId = 2,
   links = [
@@ -62,6 +62,8 @@ var drag_line = svg.append('svg:path')
 var path = svg.append('svg:g').selectAll('path'),
     circle = svg.append('svg:g').selectAll('g');
 
+var property_rows = d3.select('#nodeproperties').select('table').selectAll('tr.property');
+
 // mouse event vars
 var selected_node = null,
     selected_link = null,
@@ -98,6 +100,34 @@ function tick() {
   });
 }
 
+// update node properties table
+function node_properties() {
+
+    property_rows = property_rows.data(function(d) {
+        var arr = [];
+        if(!selected_node) return [];
+        Object.keys(selected_node).forEach(function(key,index) {
+             arr.push({value: selected_node[key], key: key});
+        });
+        return arr;
+    })
+
+    property_rows.enter().append('tr')
+      .attr('class', 'property')
+
+
+    property_rows.exit().remove()
+
+    property_cells = property_rows.selectAll('td').data(function(d, i) {
+        return [d.key, d.value];
+    }).text(function(d) {return d;})
+
+    property_cells.enter().append('td')
+        .text(function(d) {return d;})
+
+
+}
+
 // update graph (called when needed)
 function restart() {
   // path (link) group
@@ -123,6 +153,7 @@ function restart() {
       if(mousedown_link === selected_link) selected_link = null;
       else selected_link = mousedown_link;
       selected_node = null;
+      node_properties();
       restart();
     });
 
@@ -164,6 +195,8 @@ function restart() {
       mousedown_node = d;
       if(mousedown_node === selected_node) selected_node = null;
       else selected_node = mousedown_node;
+
+      node_properties();
       selected_link = null;
 
       // reposition drag line
