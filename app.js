@@ -14,7 +14,7 @@ var zoom = d3.behavior.zoom()
     .scaleExtent([1, 10])
     .on("zoom", zoomed);
 
-var svg = d3.select('body')
+var svg = d3.select('#graph')
   .append('svg')
   .attr('oncontextmenu', 'return false;')
   .attr('width', width)
